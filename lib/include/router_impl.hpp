@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include <sb/sleeping_dog/types.hpp>
 
 namespace sb::sleeping_dog {
 
@@ -13,7 +14,6 @@ public:
   ~router_impl();
 
   using path_type = std::string;
-  using request_type = std::string;
   using auth_type = std::string;
   using callback_type = std::string;
 

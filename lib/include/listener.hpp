@@ -10,11 +10,20 @@
 
 namespace sb::sleeping_dog {
 
+class server_impl;
+
+
 class listener
   : public std::enable_shared_from_this<listener>
 {
+  struct private_type {};
 public:
-  listener(boost::asio::io_context& ioc, boost::asio::ssl::context& ctx, boost::asio::ip::tcp::endpoint endpoint, std::shared_ptr<std::string const> const& doc_root);
+  listener(private_type key, std::shared_ptr<server_impl> server_ptr,
+      boost::asio::io_context& ioc, boost::asio::ssl::context& ctx, boost::asio::ip::tcp::endpoint endpoint);
+
+  static std::shared_ptr<listener> create(std::shared_ptr<server_impl> server_ptr,
+      boost::asio::io_context& ioc, boost::asio::ssl::context& ctx, boost::asio::ip::tcp::endpoint endpoint);
+
 
   void run();
 
@@ -24,10 +33,10 @@ private:
 
 
 private:
+  std::weak_ptr<server_impl> server_;
   boost::asio::io_context& ioc_;
   boost::asio::ssl::context& ctx_;
   boost::asio::ip::tcp::acceptor acceptor_;
-  std::shared_ptr<std::string const> doc_root_;
 };
 
 

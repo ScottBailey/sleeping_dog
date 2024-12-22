@@ -1,7 +1,7 @@
 
 set(target_name "sleeping_dog")
 
-
+find_package(OpenSSL REQUIRED)
 
 
 file(GLOB_RECURSE sb_hpp  CONFIGURE_DEPENDS sb/*.hpp sb/*.ipp)
@@ -19,6 +19,7 @@ target_include_directories(${target_name} PRIVATE
 target_include_directories(${target_name} PUBLIC
   .   # for `sb/sleeping_dog/...`
 )
-target_link_libraries(${target_name} PRIVATE
+target_link_libraries(${target_name} PUBLIC
   Boost::beast
+  OpenSSL::SSL
 )

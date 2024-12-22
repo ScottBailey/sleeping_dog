@@ -41,6 +41,14 @@ CPMAddPackage(
   PATCHES  sqlite.patch
 )
 
+# CLI11
+CPMAddPackage(
+  NAME     CLI11
+  URL      https://github.com/CLIUtils/CLI11/archive/refs/tags/v2.4.2.tar.gz
+  URL_HASH SHA256=f2d893a65c3b1324c50d4e682c0cdc021dd0477ae2c048544f39eed6654b699a
+  SYSTEM   True
+)
+
 
 
 # Boost libraries

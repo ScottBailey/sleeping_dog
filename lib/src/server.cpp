@@ -6,7 +6,7 @@ namespace sb::sleeping_dog {
 //--- constructors/destructor ------------------------------------------------------------------------------------------
 
 server::server()
-  : impl_{ server_impl::create() }
+  : impl_{ server_impl::create(3) }
 {
 }
 

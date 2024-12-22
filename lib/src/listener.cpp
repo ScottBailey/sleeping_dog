@@ -1,11 +1,18 @@
 #include <listener.hpp>
+#include <server_impl.hpp>
+#include <http_session.hpp>
+
+#include <boost/asio/strand.hpp>
+
 #include <string_view>
+
+
 
 #include <iostream> // debugging, remove!!!!
 
 namespace {
 
-void fail(boost::beast::error_code ec, std::string_view what) {
+void fail(boost::beast::error_code bec, std::string_view what) {
     // ssl::error::stream_truncated, also known as an SSL "short read",
     // indicates the peer closed the connection without performing the
     // required closing handshake (for example, Google does this to
@@ -23,10 +30,10 @@ void fail(boost::beast::error_code ec, std::string_view what) {
     // Therefore, if we see a short read here, it has occurred
     // after the message has been completed, so it is safe to ignore it.
 
-  if(ec == boost::asio::ssl::error::stream_truncated)
+  if(bec == boost::asio::ssl::error::stream_truncated)
       return;
 
-  std::cerr << what << ": " << ec.message() << "\n";
+  std::cerr << what << ": " << bec.message() << "\n";
 }
 
 } // namespace
@@ -34,59 +41,80 @@ void fail(boost::beast::error_code ec, std::string_view what) {
 
 namespace sb::sleeping_dog {
 
-
-listener::listener(boost::asio::io_context& ioc, boost::asio::ssl::context& ctx, boost::asio::ip::tcp::endpoint endpoint, std::shared_ptr<std::string const> const& doc_root)
-  : ioc_(ioc)
+listener::listener(private_type /*key*/, std::shared_ptr<server_impl> server_ptr,
+    boost::asio::io_context& ioc, boost::asio::ssl::context& ctx, boost::asio::ip::tcp::endpoint /*endpoint*/)
+  : server_(server_ptr)
+  , ioc_(ioc)
   , ctx_(ctx)
   , acceptor_(ioc)
-  , doc_root_(doc_root)
 {
-  boost::beast::error_code ec;
-
-  // Open the acceptor
-  acceptor_.open(endpoint.protocol(), ec);
-  if(ec) {
-    fail(ec, "open");
-    return;
-  }
-
-  // Allow address reuse
-  acceptor_.set_option(boost::asio::socket_base::reuse_address(true), ec);
-  if(ec) {
-    fail(ec, "set_option");
-    return;
-  }
-
-  // Bind to the server address
-  acceptor_.bind(endpoint, ec);
-  if(ec) {
-    fail(ec, "bind");
-    return;
-  }
-
-  // Start listening for connections
-  acceptor_.listen(boost::asio::socket_base::max_listen_connections, ec);
-  if(ec) {
-    fail(ec, "listen");
-    return;
-  }
-
 }
 
 
 
 //---
 
+std::shared_ptr<listener> listener::create(std::shared_ptr<server_impl> server_ptr, boost::asio::io_context& ioc, boost::asio::ssl::context& ctx, boost::asio::ip::tcp::endpoint endpoint) {
 
-void listener::do_accept() {
+  auto p = std::make_shared<listener>(private_type{}, server_ptr, ioc, ctx, endpoint);
+
+
+  boost::beast::error_code bec;
+
+  // Open the acceptor
+  p->acceptor_.open(endpoint.protocol(), bec);
+  if(bec) {
+    fail(bec, "open");
+    return {};
+  }
+
+  // Allow address reuse
+  p->acceptor_.set_option(boost::asio::socket_base::reuse_address(true), bec);
+  if(bec) {
+    fail(bec, "set_option");
+    return {};
+  }
+
+  // Bind to the server address
+  p->acceptor_.bind(endpoint, bec);
+  if(bec) {
+    fail(bec, "bind");
+    return {};
+  }
+
+  // Start listening for connections
+  p->acceptor_.listen(boost::asio::socket_base::max_listen_connections, bec);
+  if(bec) {
+    fail(bec, "listen");
+    return {};
+  }
+
+  return p;
 }
 
 
-void listener::on_accept(boost::beast::error_code ec, boost::asio::ip::tcp::socket socket) {
+void listener::do_accept() {
+
+  acceptor_.async_accept(boost::asio::make_strand(ioc_),
+      [self = shared_from_this()](boost::beast::error_code bec, boost::asio::ip::tcp::socket socket) {
+        self->on_accept(bec, std::move(socket));
+      });
+}
+
+
+void listener::on_accept(boost::beast::error_code bec, boost::asio::ip::tcp::socket socket) {
+  if(bec) {
+    fail(bec, "accept");
+    return; // To avoid infinite loop
+  }
+  std::cout << "listener::on_accept()" << std::endl;
+  http_session::create(server_, std::move(socket), ctx_);
+  do_accept();
 }
 
 
 void listener::run() {
+  do_accept();
 }
 
 

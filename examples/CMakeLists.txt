@@ -1,8 +1,7 @@
 
-set(target_name example)
-
-
-add_executable(${target_name} example.cpp)
-target_link_libraries(${target_name} PRIVATE
+set(target_name puppy)
+add_executable(puppy puppy.cpp)
+target_link_libraries(puppy PRIVATE
   sleeping_dog
+  CLI11::CLI11
 )

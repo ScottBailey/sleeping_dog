@@ -2,11 +2,14 @@
 
 #include <string>
 #include <memory>
+#include <functional>
+
+#include <sb/sleeping_dog/types.hpp>
+
 
 namespace sb::sleeping_dog {
 
-// forward declarations
-class router_impl;
+
 
 class router {
 public:
@@ -14,23 +17,26 @@ public:
   router();
   ~router();
 
-  using path_type = std::string;
-  using request_type = std::string;
+
+
+
   using auth_type = std::string;
-  using callback_type = std::string;
-  using payload_type = std::string;
+
+  using callback_type = std::function<response_type(const request_type&)>;
 
 
-  void prefix(path_type);
+
+  void prefix(path_type path);
   void auth(auth_type);
-  void add(request_type, path_type, callback_type);
-  void drop(request_type, path_type);
+  void add(verb_type verb, path_type path, callback_type cb);
+  void drop(verb_type verb, path_type path);
 
-
-  void handle(request_type, path_type, payload_type);
+  // Handling a request requires a response.
+  response_type handle(const request_type& req);
 
 private:
-  std::unique_ptr<router_impl> impl_;
+  struct router_data;   // forward declaration
+  std::unique_ptr<router_data> data_;
 };
 
 

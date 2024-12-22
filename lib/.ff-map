@@ -1,3 +1,0 @@
-;; bi-directional map
-(("src/server.cpp" . "sb/sleeping_dog/server.hpp")
- ("src/router.cpp" . "sb/sleeping_dog/router.hpp"))
