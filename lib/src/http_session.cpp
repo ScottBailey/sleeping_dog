@@ -2,11 +2,9 @@
 #include <server_impl.hpp>
 
 
-#include <iostream> // debugging, remove!!!!
-
 namespace {
 
-void fail(boost::beast::error_code ec, std::string_view what) {
+void fail(boost::beast::error_code bec, std::string_view what) {
     // ssl::error::stream_truncated, also known as an SSL "short read",
     // indicates the peer closed the connection without performing the
     // required closing handshake (for example, Google does this to
@@ -24,10 +22,10 @@ void fail(boost::beast::error_code ec, std::string_view what) {
     // Therefore, if we see a short read here, it has occurred
     // after the message has been completed, so it is safe to ignore it.
 
-  if(ec == boost::asio::ssl::error::stream_truncated)
+  if(bec == boost::asio::ssl::error::stream_truncated)
       return;
 
-  std::cerr << what << ": " << ec.message() << "\n";
+  spdlog::error("[Fail] [what: '{}'] [ec: '{}']", what, bec.message());
 }
 
 } // namespace
@@ -42,19 +40,43 @@ http_session::http_session(private_token /*key*/, std::weak_ptr<server_impl> ser
   : server_{server_ptr}
   , stream_(std::move(socket), ctx)
 {
-  static_assert(queue_limit_ > 0, "queue limit must be positive");
-  std::cout << "http_session::http_session()" << std::endl;
+  {
+    // create the base name
+    std::ostringstream oss;
+    oss << "http_session: " << stream_.lowest_layer().remote_endpoint().address();
+    auto name = oss.str();
+    // see if we need to add instance
+    logger_ = spdlog::get(name);
+    if (logger_) {
+      std::string temp_name;
+      temp_name = name;
+      for (size_t i = 1; logger_; ++i) {
+        spdlog::debug("logger: '{}' exists", temp_name);
+        temp_name = fmt::format("{} {}", name, i);
+        logger_ = spdlog::get(temp_name);
+      }
+      name = temp_name;
+    }
+    // create the logger
+    log_name_ = name;
+    logger_ = spdlog::stdout_color_mt(log_name_);
+  }
+
+  // might be noce to add what connected here.
+  logger_->trace("[constructor]");
 }
 
 
-http_session::~http_session() = default;
+http_session::~http_session() {
+  logger_->trace("[destructor]");
+  spdlog::drop(log_name_);
+}
 
 
 //---
 
 
 std::shared_ptr<http_session> http_session::create(std::weak_ptr<server_impl> server_ptr, boost::asio::ip::tcp::socket&& socket, boost::asio::ssl::context& ctx) {
-  std::cout << "http_session::create()" << std::endl;
   auto rv = std::make_shared<http_session>(private_token{}, server_ptr, std::move(socket), ctx);
   rv->run();
   return rv;
@@ -63,6 +85,7 @@ std::shared_ptr<http_session> http_session::create(std::weak_ptr<server_impl> se
 
 
 void http_session::do_close() {
+  logger_->trace("[do_close]");
 
   auto server_ptr = server_.lock();
   if (!server_ptr) {
@@ -74,63 +97,62 @@ void http_session::do_close() {
 
 
 void http_session::do_read() {
-  std::cout << "http_session::do_read()" << std::endl;
+  logger_->trace("[do_read]");
+
   // Set the timeout.
   boost::beast::get_lowest_layer(stream_).expires_after(std::chrono::seconds(30));
 
   // Make the request empty before reading,
   // otherwise the operation behavior is undefined.
-  req_ = {};
+  request_ = {};
 
   // Read a request
-  boost::beast::http::async_read(stream_, buffer_, req_,
-      [self = shared_from_this()](boost::beast::error_code ec, std::size_t bytes_transferred) {
-        self->on_read(ec,bytes_transferred);
+  boost::beast::http::async_read(stream_, buffer_, request_,
+      [self = shared_from_this()](boost::beast::error_code bec, std::size_t bytes_transferred) {
+        self->on_read(bec,bytes_transferred);
       });
 }
 
 
-response_type http_session::handle_request(request_type&& r) {
-
-  // Find the path
-  std::cout << r.target() << std::endl;
-
-
-  // Return a failure response here...
-  return response_type{}; // ***fix***
-}
-
-
-void http_session::on_handshake(boost::beast::error_code ec) {
-  std::cout << "http_session::on_handshake()" << std::endl;
+void http_session::on_handshake(boost::beast::error_code bec) {
+  logger_->trace("[on_handshake]");
 
   // ~/.cpm/boost/1359e136761ab2d10afa1c4e21086c8d824735cd/libs/beast/example/http/server/async-ssl/http_server_async_ssl.cpp
-  if(ec)
-    return fail(ec, "handshake");
+  if(bec) {
+    logger_->error("[on_handshake] [error: '{}']", bec.what());
+    return fail(bec, "handshake");
+  }
 
   do_read();
 }
 
 
 void http_session::on_read(boost::beast::error_code bec, std::size_t /*bytes_transferred*/) {
-  std::cout << "http_session::on_read()" << std::endl;
+  logger_->trace("[on_read]");
+
   // This means they closed the connection
   if(bec == boost::beast::http::error::end_of_stream)
     return do_close();
 
-  if(bec)
+  if(bec) {
+    logger_->error("[on_read] [error: '{}']", bec.what());
     return fail(bec, "read");
+  }
 
-  // Send the response
+  auto server = server_.lock();
+  if (!server) {
+    logger_->error("[on_read] [error: NO SERVER]");
+    return fail(bec, "no server");
+  }
 
-  // this is where we call the router.
-  auto response = handle_request(std::move(req_));
+  // Create and send the response
+  auto response = server->handle_request(std::move(request_));
   send_response(std::move(response));
 }
 
 
 void http_session::on_run() {
-  std::cout << "http_session::on_run()" << std::endl;
+  logger_->trace("[on_run]");
 
   auto server_ptr = server_.lock();
   if (!server_ptr) {
@@ -142,35 +164,39 @@ void http_session::on_run() {
 
   // Perform the SSL handshake
   stream_.async_handshake(boost::asio::ssl::stream_base::server,
-      [self = shared_from_this()](boost::beast::error_code ec) {
-        self->on_handshake(ec);
+      [self = shared_from_this()](boost::beast::error_code bec) {
+        self->on_handshake(bec);
       });
 }
 
 
 void http_session::on_write(boost::beast::error_code bec, size_t /*bytes_transferred*/) {
-  std::cout << "http_session::on_write()" << std::endl;
+  logger_->trace("[on_write]");
 
   if(bec == boost::beast::http::error::end_of_stream)
     return do_close();
 
-  if(bec)
-    return fail(bec, "read");
+  if(bec) {
+    logger_->error("[on_write] [error: '{}']", bec.what());
+    return fail(bec, "write");
+  }
 
   do_read();
 }
 
 
 void http_session::run() {
-  std::cout << "http_session::run()" << std::endl;
+  logger_->trace("[run]");
+
   // move the run call into the io_context
   auto server_ptr = server_.lock();
   if (!server_ptr) {
+    logger_->error("[run] [error: NO SERVER]");
     return;
   }
   auto self_ptr = weak_from_this().lock();
   if (!self_ptr) {
-    std::cout << "http_session::run() bad self" << std::endl;
+    spdlog::critical("[http_session::run() called without a self!]");
     return;
   }
   server_ptr->session_add(shared_from_this());
@@ -182,9 +208,11 @@ void http_session::run() {
 
 
 void http_session::send_response(response_type&& r) {
-  std::cout << "http_session::send_response()" << std::endl;
+  logger_->trace("[send_response]");
 
-  boost::beast::http::async_write(stream_, std::move(r),
+  response_ = std::move(r);
+
+  boost::beast::http::async_write(stream_, response_,
       [self = shared_from_this()](boost::beast::error_code bec, size_t bytes_transferred) {
         self->on_write(bec, bytes_transferred);
       });

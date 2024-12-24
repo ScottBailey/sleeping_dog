@@ -17,7 +17,7 @@ struct router::router_data {
       return h1 ^ (h2 << 1); // or use boost::hash_combine
     }
   };
-  std::unordered_map<key_type,router::callback_type,hash_type> map;
+  std::unordered_map<key_type,router::route_callback_type,hash_type> map;
 };
 
 

@@ -2,10 +2,10 @@
 #include <listener.hpp>
 #include <http_session.hpp>
 
+#include <stdexcept>
+
 #include <sb/sleeping_dog/router.hpp>
 
-
-#include <iostream> // debugging, remove!!!!
 
 
 namespace {
@@ -29,7 +29,7 @@ void load_server_certificate(boost::asio::ssl::context& ctx) {
 
 
   if (!SSL_CTX_set_cipher_list(ctx.native_handle(), "ECDHE+AESGCM:ECDHE+CHACHA20")) {
-    std::cout << "Failed to set cipher list" << std::endl;
+    spdlog::critical("Failed to set cipher list");
     throw std::runtime_error("Failed to set cipher list");
   }
 }
@@ -41,11 +41,12 @@ namespace sb::sleeping_dog {
 
 
 server_impl::server_impl(private_token /*key*/, size_t thread_count)
-  : thread_count_{thread_count}
+  : logger_{spdlog::stdout_color_mt("server_impl")}
+  , thread_count_{thread_count}
   , ioc_(thread_count_)
   , work_guard_{boost::asio::make_work_guard(ioc_)}
 {
-  // nothing to do here
+  logger_->trace("[constructor] [thread count: {}]",thread_count);
 }
 
 
@@ -56,6 +57,7 @@ server_impl::~server_impl() = default;
 
 
 void server_impl::cancel() {
+  logger_->trace("[cancel]");
   work_guard_.reset();
   //for (auto& a : threads_) {
   //   a.cancel(); ?
@@ -73,23 +75,34 @@ std::shared_ptr<server_impl> server_impl::create(size_t thread_count) {
 }
 
 
+response_type server_impl::handle_request(request_type&& r) {
+  logger_->trace("[handle_request] [target: {}]", r.target());
+
+  return router_->handle(std::move(r));
+}
+
+
 void server_impl::initialize() {
+  logger_->trace("[initialize]");
+
   // Generate I/O and SSL contexts
   ctx_ = std::make_unique<boost::asio::ssl::context>(boost::asio::ssl::context::tlsv12);
 
   // load certificates:
   //  see   boost/libs/beast/example/common/server_certificate.hpp
   load_server_certificate(*ctx_);
-
 }
 
 
 void server_impl::join() {
+  logger_->trace("[join] [waiting...]");
 
   // ***fix***
   for (auto& a : threads_) {
     a.join();
   }
+
+  logger_->trace("[join] [...done!]");
 }
 
 
@@ -99,21 +112,25 @@ void server_impl::listen(unsigned port) {
 
 
 void server_impl::listen(std::string_view addr, unsigned port) {
+  logger_->trace("[listen] [addr: {}] [port: {}]", addr, port);
   address_str_ = addr;
   port_ = port;
 }
 
 
 sleeping_dog::router* server_impl::router() {
-    // throws smth if router is nullptr
+  logger_->trace("[router]");
+
+  // throws if router is nullptr
   if (!router_)
-    throw "smth";
+    throw std::runtime_error("router_ is nullptr");
 
   return router_.get();
 }
 
 
 void server_impl::run() {
+  logger_->trace("[run]");
   start();
   join();
 }
@@ -121,14 +138,17 @@ void server_impl::run() {
 
 void server_impl::session_add(std::shared_ptr<http_session> session_ptr) {
   if (!session_ptr) {
+    logger_->error("[session_add] [session_ptr in nullptr]");
     return;
   }
+  logger_->trace("[session_add]");
   session_del(session_ptr);
   sessions_.push_back(session_ptr);
 }
 
 
 void server_impl::session_del(std::shared_ptr<http_session> session_ptr) {
+  logger_->trace("[session_del]");
   for (auto i = sessions_.begin(); i != sessions_.end(); ) {  // should be a remove_if
     if (*i == session_ptr) {
       i = sessions_.erase(i);
@@ -142,6 +162,7 @@ void server_impl::session_del(std::shared_ptr<http_session> session_ptr) {
 
 /// non-blocking call
 void server_impl::start() {
+  logger_->trace("[start]");
 
   // what happens if we've already started?
 
@@ -165,11 +186,13 @@ void server_impl::start() {
 
 
 void server_impl::take(std::unique_ptr<sleeping_dog::router>&& r) {
+  logger_->trace("[take (router)]");
   router_ = std::move(r);
 }
 
 
 bool server_impl::try_join() {
+  logger_->trace("[try_join]");
   return true;
 }
 

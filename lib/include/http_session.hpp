@@ -7,6 +7,9 @@
 #include <boost/beast/http.hpp>
 #include <boost/beast/ssl.hpp>
 
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
 #include <sb/sleeping_dog/types.hpp>
 
 
@@ -20,6 +23,12 @@
 namespace sb::sleeping_dog {
 
 class server_impl;
+
+
+// Notes:
+//
+//  We need a way to switch to websockets.
+//
 
 
 class http_session
@@ -45,23 +54,18 @@ private:
   void on_write(boost::beast::error_code ec, std::size_t bytes_transferred);
   void do_close();
 
-
   void send_response(response_type&& r);
-  response_type handle_request(request_type&& r);
-
-
 
 private:
+  decltype(spdlog::stdout_color_mt("console")) logger_;
+  std::string log_name_;
+
   std::weak_ptr<server_impl> server_;
-  boost::beast::ssl_stream<boost::beast::tcp_stream> stream_;
+  boost::beast::ssl_stream<boost::beast::tcp_stream> stream_;  // this may be deprecated?
   boost::beast::flat_buffer buffer_;
 
-  boost::beast::http::request<boost::beast::http::string_body> req_;
-
-
-  static constexpr std::size_t queue_limit_ = 8; // max responses
-  std::queue<boost::beast::http::message_generator> response_queue_;
-
+  request_type request_;
+  response_type response_;
 };
 
 } // namespace sb::sleeping_dog

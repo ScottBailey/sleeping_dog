@@ -23,13 +23,18 @@ CPMAddPackage(
   NAME     fmt
   URL      https://github.com/fmtlib/fmt/archive/refs/tags/11.0.2.tar.gz
   URL_HASH SHA256=6cb1e6d37bdcb756dbbe59be438790db409cdb4868c66e888d5df9f13f7c027f
-  OPTIONS  "FMT_INSTALL OFF" "FMT_TEST OFF" "FMT_UNICODE OFF"
+  SYSTEM True
+  OPTIONS
+    "FMT_INSTALL OFF"
+    "FMT_TEST OFF"
+    "FMT_UNICODE OFF"
 )
 # spdlog
 CPMAddPackage(
   NAME     spdlog
   URL      https://github.com/gabime/spdlog/archive/refs/tags/v1.14.1.tar.gz
   URL_HASH SHA256=1586508029a7d0670dfcb2d97575dcdc242d3868a259742b69f100801ab4e16b
+  SYSTEM True
   OPTIONS
     "SPDLOG_FMT_EXTERNAL ON"
 )
@@ -38,6 +43,7 @@ CPMAddPackage(
   NAME     sqlite
   URL      https://www.sqlite.org/2024/sqlite-amalgamation-3460000.zip
   URL_HASH SHA256=712a7d09d2a22652fb06a49af516e051979a3984adb067da86760e60ed51a7f5
+  SYSTEM True
   PATCHES  sqlite.patch
 )
 

@@ -1,12 +1,17 @@
 #include <sb/sleeping_dog.hpp>
 #include <CLI/CLI.hpp>
 
+#include <spdlog/spdlog.h>
+#include <fmt/format.h>
+
 
 using verb = sb::sleeping_dog::verb_type;
 using response_type = sb::sleeping_dog::response_type;
 using request_type = sb::sleeping_dog::request_type;
 
 int main(int argc, char** argv) {
+
+  spdlog::set_level(spdlog::level::trace);
 
   CLI::App app{"Sleeping Dog example"};
 
@@ -30,12 +35,11 @@ int main(int argc, char** argv) {
         return lookup(user,pass);
       });
   */
-  router->add(verb::get, "data",
+  router->add(verb::get, "/data",
       [](const request_type& r) -> response_type {
-        std::cout << "hi: " << r.target() << "\n";
         //controller->do_something(payload);
         //con.done();
-        return response_type{};
+        return sb::sleeping_dog::make_response(r, fmt::format("Hi! I received a message with target: '{}'\n", r.target()));
       });
 
   /*

@@ -10,6 +10,11 @@
 #include <boost/beast/http.hpp>
 #include <boost/beast/ssl.hpp>
 
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
+#include <sb/sleeping_dog/types.hpp>
+
 
 namespace sb::sleeping_dog {
 
@@ -25,6 +30,9 @@ public:
   server_impl(private_token key, size_t thread_count);
   virtual ~server_impl();
 
+
+  /// Calls constructor and initialize()
+  /// @throws std::runtime_error if load_server_certificate() fails
   static std::shared_ptr<server_impl> create(size_t thread_count);
 
 
@@ -33,7 +41,7 @@ public:
 
   void take(std::unique_ptr<router>&& router);
 
-  /// @throws smth if router is nullptr
+  /// @throws std::runtime_error if return would be nullptr
   sleeping_dog::router* router();
 
   /// blocking call
@@ -51,11 +59,18 @@ public:
   void session_del(std::shared_ptr<http_session> session_ptr);
 
 
+  /// Call into router(s) to handle the request
+  /// This probably needs to be improved.
+  response_type handle_request(request_type&& r);
+
 private:
 
   void initialize();
 
+
 private:
+
+  decltype(spdlog::stdout_color_mt("console")) logger_;
 
   size_t thread_count_;
   boost::asio::io_context ioc_;
