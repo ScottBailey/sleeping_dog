@@ -1,6 +1,9 @@
 #include <sb/sleeping_dog/router.hpp>
 #include <router_data.hpp>
 
+#include <fmt/format.h>
+#include <spdlog/spdlog.h>
+
 #include <iostream> // debugging only, remove
 
 namespace sb::sleeping_dog {
@@ -55,13 +58,15 @@ path_type path_replace_front(path_type path, path_type old_prefix, path_type new
 
   // ensure that old_prefix is at the front.
   if (path.find(old_prefix) != 0) {
-    throw std::runtime_exception("alksf");
+    auto msg = fmt::format("path_replace_front('{}', '{}', '{}') - arg 1 doesn't begin with arg 2");
+    spdlog::error(msg);
+    throw std::runtime_error(msg);
   }
 
   // replace
   path.replace(0,old_prefix.size(),new_prefix);
 
-  return l;
+  return path;
 }
 
 }
@@ -82,18 +87,18 @@ router::~router() = default;
 //---
 
 void router::add(verb_type verb, path_type path, route_callback_type cb) {
-  // We could normalize and combine the path here:
-  path = path_normalize(prefix_, path);
-
+  // We normalize and combine the paths here:
+  path = path_normalize(path);
+  path = path_combine(prefix_,path);
   route_->map.emplace(std::make_pair(std::make_pair(verb,path),cb));
 }
 
 
 void router::drop(verb_type verb, path_type path)
 {
-  // We could normalize and combine the path here:
-  path = path_normalize(prefix_, path);
-
+  // We could normalize and combine paths here:
+  path = path_normalize(path);
+  path = path_combine(prefix_,path);
   route_->map.erase({verb,path});
 }
 
@@ -104,7 +109,6 @@ response_type router::handle(const request_type& req) {
   if (!valid) {
     return resp;
   }
-
 
   auto verb = req.method();
   auto path = req.target();
@@ -128,9 +132,9 @@ path_type router::prefix() const {
 }
 
 
-void router::prefix(path_type path) {
+void router::prefix(path_type new_prefix) {
   // normalize the inbound value.
-  new_prefix = path_normalize(path);
+  new_prefix = path_normalize(new_prefix);
 
   // same? just return
   if (prefix_ == new_prefix) {
@@ -140,8 +144,8 @@ void router::prefix(path_type path) {
   // more sanity checking might be nice here?
   // sanitiy_check(new_prefix);
 
-  auto replacement_route = std::make_unique<route_data>();
-  for (auto& a : route_) {
+  auto replacement_route = std::make_unique<router_data>();
+  for (auto& a : route_->map) {
     const path_type& old_path = a.first.second;
     const path_type new_path = path_replace_front(old_path,prefix_,new_prefix);
     // move the callback to the new location
@@ -149,8 +153,8 @@ void router::prefix(path_type path) {
   }
 
 
-  prefix_ = path;
-  route_ = replacement_route;
+  prefix_ = new_prefix;
+  route_ = std::move(replacement_route);
 }
 
 
