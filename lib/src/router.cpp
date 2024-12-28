@@ -11,7 +11,7 @@ namespace sb::sleeping_dog {
 
 namespace {
 
-router::auth_return_type default_auth(const request_type&) {
+auth::return_type default_auth(const request_type&) {
   return {true, response_type{}};
 }
 
@@ -86,11 +86,16 @@ router::~router() = default;
 
 //---
 
-void router::add(verb_type verb, path_type path, route_callback_type cb) {
+void router::add(verb_type verb, path_type path, callback_type cb) {
   // We normalize and combine the paths here:
   path = path_normalize(path);
   path = path_combine(prefix_,path);
   route_->map.emplace(std::make_pair(std::make_pair(verb,path),cb));
+}
+
+
+void router::auth(auth::callback_type cb) {
+  auth_ = std::move(cb);
 }
 
 

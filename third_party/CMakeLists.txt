@@ -67,7 +67,7 @@ CPMAddPackage(
     "BOOST_ENABLE_CMAKE ON"
     "BOOST_SKIP_INSTALL_RULES ON" # Set `OFF` for installation
     "BUILD_SHARED_LIBS OFF"
-    "BOOST_INCLUDE_LIBRARIES system\\\;url\\\;beast" # Note the escapes!
+    "BOOST_INCLUDE_LIBRARIES system\\\;url\\\;beast\\\;json" # Note the escapes!
 )
 
 # magic_enum
