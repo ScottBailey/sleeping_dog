@@ -23,8 +23,8 @@ target_link_libraries(${target_name} PUBLIC
   Boost::beast
   Boost::url
   Boost::headers
-  #sqlite
-  #boost_sqlite
+  SQLite::SQLite3
+  Boost::sqlite
   OpenSSL::SSL
   fmt::fmt
   spdlog::spdlog

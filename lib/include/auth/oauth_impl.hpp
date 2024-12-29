@@ -4,6 +4,8 @@
 
 #include <string_view>
 #include <boost/url/url.hpp>
+#include <boost/sqlite/connection.hpp>
+#include <boost/sqlite/statement.hpp>
 
 
 namespace sb::sleeping_dog::auth {
@@ -16,6 +18,9 @@ public:
   return_type authorize(const request_type&);
 
 private:
+  boost::sqlite::connection db_;
+  boost::sqlite::statement s1_;
+
 
   boost::urls::url auth_url_;
   std::string client_id_;

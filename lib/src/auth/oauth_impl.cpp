@@ -29,10 +29,20 @@ void dump(const request_type& r) {
 //---
 
 oauth_impl::oauth_impl(boost::urls::url auth_url, std::string_view client_id, std::string_view client_secret)
-  : auth_url_ {auth_url}
+  : db_(boost::sqlite::in_memory)
+  , auth_url_ {auth_url}
   , client_id_ {client_id}
   , client_secret_ {client_secret}
 {
+  db_.execute
+    (
+     "CREATE TABLE IF NOT EXISTS state_table ("
+     " time       intger not null,"
+     " source     integer);"
+     );
+
+
+  s1_ = db_.prepare("SELECT * FROM state_table WHERE time = ? and source = ?;");
 }
 
 
