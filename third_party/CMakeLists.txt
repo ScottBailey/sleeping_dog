@@ -40,7 +40,7 @@ CPMAddPackage(
 )
 # sqlite
 CPMAddPackage(
-  NAME     sqlite
+  NAME     SQLite3
   URL      https://www.sqlite.org/2024/sqlite-amalgamation-3460000.zip
   URL_HASH SHA256=712a7d09d2a22652fb06a49af516e051979a3984adb067da86760e60ed51a7f5
   SYSTEM True
@@ -60,14 +60,21 @@ CPMAddPackage(
 # Boost libraries
 CPMAddPackage(
   NAME Boost
-  URL https://github.com/boostorg/boost/releases/download/boost-1.86.0/boost-1.86.0-cmake.tar.xz
-  URL_HASH SHA256=2c5ec5edcdff47ff55e27ed9560b0a0b94b07bd07ed9928b476150e16b0efc57
+  URL https://github.com/boostorg/boost/releases/download/boost-1.87.0/boost-1.87.0-cmake.tar.xz
+  URL_HASH SHA256=7da75f171837577a52bbf217e17f8ea576c7c246e4594d617bfde7fafd408be5
   SYSTEM True
   OPTIONS
     "BOOST_ENABLE_CMAKE ON"
     "BOOST_SKIP_INSTALL_RULES ON" # Set `OFF` for installation
     "BUILD_SHARED_LIBS OFF"
-    "BOOST_INCLUDE_LIBRARIES system\\\;url\\\;beast\\\;json" # Note the escapes!
+    #"BOOST_INCLUDE_LIBRARIES headers\\\;system\\\;url\\\;beast\\\;json" # Note the escapes!
+)
+# Boost SQLite
+CPMAddPackage(
+  NAME boost_sqlite
+  URL https://github.com/klemens-morgenstern/sqlite/archive/refs/heads/post-review.tar.gz
+  URL_HASH SHA256=182646d186f4614001c778747359f411de79071085eea6fdaa9857f5a9e08c7c
+  SYSTEM True
 )
 
 # magic_enum

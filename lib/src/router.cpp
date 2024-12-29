@@ -6,6 +6,9 @@
 
 #include <iostream> // debugging only, remove
 
+#include <boost/config.hpp>
+
+
 namespace sb::sleeping_dog {
 
 

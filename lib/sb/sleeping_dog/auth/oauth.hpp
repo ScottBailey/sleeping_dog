@@ -3,8 +3,12 @@
 #include <sb/sleeping_dog/auth/base.hpp>
 #include <boost/url/url.hpp>
 
+#include <memory>
+
 
 namespace sb::sleeping_dog::auth {
+
+struct oauth_impl;
 
 class oauth
   : public base
@@ -19,10 +23,8 @@ public:
 
   virtual return_type authorize(const request_type&) override;
 
-
 private:
-  struct impl_data;  // should scope this
-  std::unique_ptr<impl_data> impl_;
+  std::unique_ptr<oauth_impl> impl_;
 };
 
 } // namespace sb::sleeping_dog::auth

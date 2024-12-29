@@ -22,6 +22,9 @@ target_include_directories(${target_name} PUBLIC
 target_link_libraries(${target_name} PUBLIC
   Boost::beast
   Boost::url
+  Boost::headers
+  #sqlite
+  #boost_sqlite
   OpenSSL::SSL
   fmt::fmt
   spdlog::spdlog
