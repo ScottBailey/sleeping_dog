@@ -21,7 +21,8 @@ public:
 
   static ptr create(std::string_view auth_url, std::string_view client_id, std::string_view client_secret);
 
-  virtual return_type authorize(const request_type&) override;
+protected:
+  virtual return_type i_authorize(const request_type&) override;
 
 private:
   std::unique_ptr<oauth_impl> impl_;

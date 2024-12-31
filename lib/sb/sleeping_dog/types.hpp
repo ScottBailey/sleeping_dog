@@ -20,9 +20,23 @@ using path_type = std::string;  // This *could* become a std::filesystem::path t
 
 namespace sb::sleeping_dog::auth {
 
+// Return thype here needs to become more complicated. It should really be 3 state:
+//   1. Fail, just end here.
+//   2. Accept, continue with this request.
+//   3. Accept, continue with a supplied (UPDATED) request.
+//   4. Immediately send the supplied response.
+enum class action {
+  //fail,
+  respond_now,
+  accept_as_is,
+  accept_update,
+};
+
 struct return_type {
-  bool authorized = false;
+  // switch to enum?
+  action auth_action = action::respond_now;
   response_type response = response_type{};
+  // response?
 };
 using callback_type = std::function<return_type(const request_type&)>;
 

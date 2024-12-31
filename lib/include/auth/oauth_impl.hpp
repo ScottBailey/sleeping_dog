@@ -15,7 +15,7 @@ public:
   oauth_impl(boost::urls::url auth_url, std::string_view client_id, std::string_view client_secret);
   ~oauth_impl();
 
-  return_type authorize(const request_type&);
+  return_type i_authorize(const request_type&);
 
 private:
   boost::sqlite::connection db_;

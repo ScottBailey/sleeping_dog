@@ -6,6 +6,8 @@
 
 namespace sb::sleeping_dog::auth {
 
+
+
 class base
 {
 protected:
@@ -14,7 +16,9 @@ public:
   virtual ~base();
   // -- authorize MAY require scope, such as "read" or "write"?
   // scope might be best managed as a bit field?
-  virtual return_type authorize(const request_type&) = 0;
+  return_type authorize(const request_type& req);
+protected:
+  virtual return_type i_authorize(const request_type& req) = 0;
 };
 
 using ptr = std::shared_ptr<base>;
@@ -25,7 +29,7 @@ void connect(ptr& p, ROUTER& r) {
   r.auth([weak_ptr](const request_type& req) -> return_type {
     auto shared = weak_ptr.lock();
     if (!shared)
-      return {false};
+      return {};
     return shared->authorize(req);
   });
 }

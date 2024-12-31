@@ -32,8 +32,8 @@ ptr oauth::create(std::string_view auth_url_str, std::string_view client_id, std
 }
 
 
-return_type oauth::authorize(const request_type& req) {
-  return impl_->authorize(req);
+return_type oauth::i_authorize(const request_type& req) {
+  return impl_->i_authorize(req);
 }
 
 

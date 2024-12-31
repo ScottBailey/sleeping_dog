@@ -15,7 +15,7 @@ namespace sb::sleeping_dog {
 namespace {
 
 auth::return_type default_auth(const request_type&) {
-  return {true, response_type{}};
+  return {auth::action::accept_as_is, response_type{}};
 }
 
 bool path_empty(const path_type& l) {
@@ -113,9 +113,16 @@ void router::drop(verb_type verb, path_type path)
 
 response_type router::handle(const request_type& req) {
 
-  auto [valid, resp] = auth_(req);
-  if (!valid) {
-    return resp;
+  auto [action, resp] = auth_(req);
+
+  switch (action) {
+
+    case auth::action::respond_now:
+        return resp;
+
+    case auth::action::accept_as_is:
+    case auth::action::accept_update:
+      break;
   }
 
   auto verb = req.method();
